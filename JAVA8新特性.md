@@ -547,5 +547,398 @@
   }
   ```
 
+## optional深入详解
+
+- **用于解决对空值的判断，避免出现NullPointerException**
+
+  **传统方式：**
+
+  ```java
+  // 传统方式判断空,比较繁琐
+  if (null != person){
+      Address address = person.getAddress();
+      if(null != address){
+          // todo others
+      }
+  }
+  ```
+
+  **optional不推荐的使用方式：与传统方式在形式上没有任何区别**
+
+  ```java
+  // 以下为不推荐方式
+  String s = null;
+  s = Person.getName;
+  if (null != s){
+      // todo sth
+  }
+  
+  Option<String> option = Option.of(s);
+  if(option.isPresent){
+      // todo sth
+      Object obj = option.get();
+      // todo others
+  }
+  ```
+
+  **optional的推荐使用方式：采用函数式接口调用**
+
+  ```java
+  package com.dennis.jdk8.optional;
+  
+  import java.util.Optional;
+  
+  /**
+   * 描述： optional demo
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/1/14 21:37
+   */
+  public class OptionalTest01 {
+      public static void main(String[] args) {
+  
+          // Object obj = Person.getObj();
+          // Optional<Object> opt = Optional.of(obj)    能确定obj一定不为空
+          // Optional<Object> opt = Optional.empty()    所得到的opt包含一个空元素
+          // Optional<Object> opt = Optional.ofNullable(obj)  不确定obj是否为空
+  
+          Optional<String> opt = Optional.of("hello");
+  
+          // 不推荐的使用方法
+          if (opt.isPresent()) {
+              System.out.println(opt.get());
+          }
+          System.out.println("----------------");
+  
+          // 推荐使用的方式
+  
+          // 1、optional 所包含的元素不为null则执行函数式接口方法，否则不执行（不为空）
+          opt.ifPresent(item-> System.out.println(item.toUpperCase()));
+          System.out.println(opt.get());
+          System.out.println("----------------");
+          // 2、optional 所包含的元素不为null则执行函数式接口方法，否则不执行（为空）
+          Optional<Object> opt1 = Optional.empty();
+          opt1.ifPresent(System.out::println);
+          System.out.println("----------------");
+          // 3、optional 所包含的元素不为null则应用所包含元素，否则应用其他元素（不为空）
+          System.out.println(opt.orElse("world"));
+          System.out.println("----------------");
+          // 4、optional 所包含的元素不为null则应用所包含元素，否则应用其他元素（为空）
+          System.out.println(opt1.orElse("world"));
+          System.out.println("----------------");
+          // 5、optional 所包含的元素不为null则应用所包含元素，否则应用其他元素（不为空）
+          System.out.println(opt.orElseGet(()->"Hi"));
+          System.out.println("----------------");
+          // 6、optional 所包含的元素不为null则应用所包含元素，否则应用其他元素（为空）
+          System.out.println(opt1.orElseGet(()->"Hi"));
+          System.out.println("----------------");
+      }
+  }
+  ```
+
+  **标准的函数式风格调用试例：**
+
+  ```java
+  
+  package com.dennis.jdk8.optional;
+  
+  import java.util.Arrays;
+  import java.util.Collections;
+  import java.util.List;
+  import java.util.Optional;
+  
+  /**
+   * 描述： 标准函数式接口调用风格实例
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/1/14 22:20
+   */
+  public class OptionalTest02 {
+      public static void main(String[] args) {
+          Company company = new Company();
+          Employee em1 = new Employee("张三", 30, null);
+          Employee em2 = new Employee("李四", 40, null);
+          Employee em3 = new Employee("王五", 50, null);
+  
+          List<Employee> employees = Arrays.asList(em1, em2, em3);
+          company.setName("guotie").setEmployees(employees);
+  
+          List<Employee> emList = company.getEmployees();
+  
+          Optional<List<Employee>> opt = Optional.ofNullable(emList);
+          // 标记老员工
+          List<Employee> result = opt.map(ems -> {
+              ems.forEach(employee -> {
+                  if (employee.getAge() >= 40) {
+                      employee.setTag("老员工");
+                  }
+              });
+              return ems;
+          }).orElse(Collections.emptyList());
+        System.out.println(result);
+      }
+  }
+  ```
+
+## 方法引用实现函数式接口
+
+![1579016060897](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\1579016060897.png)
+
+## stream 流
+
+- **流的基本概念和介绍：一个支持串行和并行聚合操作的元素序列**
+
+  ![1579097161474](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\1579097161474.png)
+
+- **流的构成：分成三部分**
+
+  1. 源（数据）
+
+  2. 零个或多个中间操作（惰性求值）
+
+  3. 终止操作（及早求值）
+
+     ​	To perform a computation, stream operations are composed into a stream pipeline .A stream pipeline consists of a **source** (which might be an array, a collection, a generator function, an I/O channel, etc), **zero or more ntermediate operations** (which transform a stream into another stream, such as Stream#filter(Predicate) and **a terminal operation** (which produces a result or side-effect, such as Stream#count() or Stream#forEach(Consumer)). 
+
+     ​	Streams are lazy; computation on the source data is only performed when the terminal operation is initiated, and source elements are consumed only as needed.
+
+- **流的一般创建方式**
+
+  ```java 
+  package com.dennis.jdk8.stream;
+  
+  import java.util.Arrays;
+  import java.util.List;
+  import java.util.stream.Stream;
+  
+  /**
+   * 描述：  流的一般创建方式
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/1/15 23:13
+   */
+  public class StreamTest01 {
+      public static void main(String[] args) {
+          // 1、通过多个同类元素
+          Stream<String> st1 = Stream.of("hello", "java", "world");
+  
+          // 2、通过数组
+          String[] strArray = new String[]{"today", "is", "a", "happy", "day"};
+          Stream<String> st2 = Stream.of(strArray);
+          // 1 2本质上都是通过Arrays.stream(T... values)方法实现
+  
+          // 通过集合的stream()方法
+          List<String> strList = Arrays.asList("tonight", "is", "nice", "duration");
+          Stream<String> st3 = strList.stream();
+      }
+  }
+  ```
+
+- **流带来的简化**
+
+  ```java 
+  package com.dennis.jdk8.stream;
+  
+  import java.util.OptionalDouble;
+  import java.util.stream.IntStream;
+  
+  /**
+   * 描述：
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/1/15 23:30
+   */
+  public class StreamTest02 {
+      public static void main(String[] args) {
+          IntStream.of(new int[]{1, 5, 8, 9, 5}).forEach(System.out::println);
+          System.out.println("----------------");
+  
+          // 左闭右开
+          IntStream.range(1, 10).forEach(System.out::println);
+          System.out.println("----------------");
+  
+          // 全闭
+          IntStream.rangeClosed(1, 10).forEach(System.out::println);
+          System.out.println("----------------");
+  
+          // 需求：1到100求和
+          IntStream rangeStream = IntStream.rangeClosed(1, 100);
+          int s = rangeStream.reduce(0, (first, second) -> first + second);
+          System.out.println(s);
+  //        int s1 = rangeStream.reduce(0, Integer::sum);
+  //        System.out.println(s1);
+  
+          // 需求：1到100最大值
+          int m = rangeStream.reduce(0, (first, second) -> Math.max(first, second));
+          System.out.println(m);
+  //        int m1 = rangeStream.reduce(0, Math::max);
+  //        System.out.println(m1);
+  
+          // 需求： 1到100平均值
+          OptionalDouble average = rangeStream.average();
+          System.out.println(average);
+      }
+  }
+  
+  ```
+
+- **流的进一步应用：list，array 与 stream 相互转换**
+
+  ```java
+  package com.dennis.jdk8.stream;
+  
+  import java.util.*;
+  import java.util.function.Supplier;
+  import java.util.stream.Collectors;
+  import java.util.stream.Stream;
+  
+  /**
+   * 描述： list，array 与 stream 相互转换
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/1/16 20:43
+   */
+  public class StreamTest03 {
+      public static void main(String[] args) throws InterruptedException {
+          // elements --> stream
+          Supplier<Stream<String>> streamSupplier = () -> Stream.of("today", "is", "a", "nice", "day");
+  
+          // stream --> array
+          String[] strArray1 = streamSupplier.get().toArray(String[]::new);
+          System.out.println(Arrays.toString(strArray1));
+  
+          // stream --> list
+          List<String> strList1 = streamSupplier.get().collect(Collectors.toList());
+          strList1.forEach(System.out::println);
+  
+          LinkedList<String> strList2 = streamSupplier.get().collect(
+                  () -> new LinkedList<>(),
+                  (strList, item) -> strList.add(item),
+                  (resultList, strList) -> resultList.addAll(strList)
+          );
+          strList2.forEach(System.out::println);
+  
+          ArrayList<Object> strList3 = streamSupplier.get().collect(ArrayList::new, ArrayList::add, ArrayList::addAll);
+          strList3.forEach(System.out::println);
+  
+          // Stream -> set
+          TreeSet<String> treeSet = streamSupplier.get().collect(Collectors.toCollection(TreeSet::new));
+          treeSet.forEach(System.out::println);
+  
+          // join
+          String strJoin = streamSupplier.get().collect(Collectors.joining());
+          System.out.println(strJoin);
+      }
+  }
+  ```
+
+- **使用stream注意事项：Java – Stream has already been operated upon or closed**
+
+  ```java
+  package com.mkyong.java8;
+  
+  import java.util.Arrays;
+  import java.util.stream.Stream;
+  
+  public class TestJava8 {
+  
+  public static void main(String[] args) {
+  
+      String[] array = {"a", "b", "c", "d", "e"};
+      Stream<String> stream = Arrays.stream(array);
+  
+      // loop a stream
+      stream.forEach(x -> System.out.println(x));
+  
+      // reuse it to filter again! throws IllegalStateException
+      long count = stream.filter(x -> "b".equals(x)).count();
+      System.out.println(count);
+      }
+  }
+  ```
+
+  **Output：**
+
+  java.lang.IllegalStateException: stream has already been operated upon or closed
+
+- **正确用法:example—reuse a stream correctly**
+
+  ```java
+  package com.dennis.jdk8.stream;
+  
+  import java.util.Arrays;
+  import java.util.List;
+  import java.util.function.Supplier;
+  import java.util.stream.Stream;
+  
+  /**
+   * 描述： mapFlat() demo
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/1/17 22:07
+   */
+  public class StreamTest04 {
+  
+      public static void main(String[] args) {
+          // 不采用mapFlat
+          List<String> strSrcList = Arrays.asList("today ", "is ", "a ", "happy ", "day ");
+          Supplier<Stream<String>> streamSupplier1 = () -> Stream.of("today ", "is ", "a ", "happy ", "day ");
+          // list->stream->map(element)->todo...
+          strSrcList.stream().map(String::toUpperCase).forEach(System.out::print);
+          streamSupplier1.get().map(String::length).forEach(System.out::print);
+          System.out.println();
+  
+          // 采用mapFlat
+          List<String> strList1 = Arrays.asList("today ", "is ");
+          List<String> strList2 = Arrays.asList("a ", "wonderful ");
+          List<String> strList3 = Arrays.asList("sunny ", "day ");
+  
+          Supplier<Stream<List<String>>> streamSupplier2 = () -> Stream.of(strList1, strList2, strList3);
+          // Stream<List<T>> -> flatMap(获取到每个Stream中包含的元素) -> map 每个元素做对应的映射操作(获取到一个新的stream) -> option the new stream
+          streamSupplier2.get().flatMap(List::stream).map(String::toUpperCase).forEach(System.out::print);
+      }
+  
+  }
+  ```
+
+- **generate()和Iterate()**
+
+  ```java
+  package com.dennis.jdk8.stream;
+  
+  import java.util.UUID;
+  import java.util.stream.Stream;
+  
+  /**
+   * 描述： generate方法 和 iterate方法
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/1/17 22:40
+   */
+  public class StreamTest05 {
+      public static void main(String[] args) {
+          // generate method is suitable for generating constant streams, streams of random elements, etc.
+          Stream<String> stream1 = Stream.generate(UUID.randomUUID()::toString);
+          stream1.findFirst().ifPresent(System.out::println);
+  
+          // iterate 无限迭代中间操作，需结合limit()终止操作一起使用
+          Stream.iterate(5, (seed) -> seed * 2).limit(5).forEach(System.out::println);
+  
+          // 链式调用:找出大于等于2的元素，然后每个元素乘以2，再舍去前两个元素，又获取前两个并求和
+          Stream<Integer> integerStream = Stream.of(1, 3, 5, 7, 9, 11);
+          Integer sum = integerStream.filter((integer -> integer >= 2)).map(item -> item * 2).skip(2).limit(2).reduce(0, Integer::sum);
+          System.out.println(sum);
+      }
+  }
+  
+  ```
+
   
 
