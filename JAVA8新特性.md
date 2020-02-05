@@ -690,7 +690,7 @@
 
 - **流的基本概念和介绍：一个支持串行和并行聚合操作的元素序列**
 
-  ![1579097161474](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\1579097161474.png)
+  ![1579097161474](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\1579097161474.png)![image-20200203212019041](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\image-20200203212019041.png)![image-20200203212401309](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\image-20200203212401309.png)
 
 - **流的构成：分成三部分**
 
@@ -928,7 +928,7 @@
           Stream<String> stream1 = Stream.generate(UUID.randomUUID()::toString);
           stream1.findFirst().ifPresent(System.out::println);
   
-          // iterate 无限迭代中间操作，需结合limit()终止操作一起使用
+          // iterate 无限迭代中间操作，其后需紧跟limit()终止操作一起使用
           Stream.iterate(5, (seed) -> seed * 2).limit(5).forEach(System.out::println);
   
           // 链式调用:找出大于等于2的元素，然后每个元素乘以2，再舍去前两个元素，又获取前两个并求和
@@ -940,5 +940,258 @@
   
   ```
 
-  
+- **内部迭代与外部迭代**
 
+  ![](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\1579357345941.png)
+
+  **外内部迭代示意图**
+
+  ![](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\1579357796154.png)
+
+- **Stream的并行与短路运算**
+
+  1. 串行流即：单线程执行
+  2. 并行流即：多线程执行（调用parrelStream()方法）
+
+  ```Java
+  package com.dennis.jdk8.stream;
+  
+  import java.util.ArrayList;
+  import java.util.List;
+  import java.util.UUID;
+  import java.util.concurrent.TimeUnit;
+  
+  /**
+   * 描述：并发流parallelStream()与串行流stream()
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/2/3 22:30
+   */
+  public class StreamTest06 {
+      public static void main(String[] args) {
+          List<String> list = new ArrayList<>(5000000);
+  
+          for (int i = 0; i < 5000000; i++) {
+              list.add(UUID.randomUUID().toString());
+          }
+  
+          // 排序
+          System.out.println("开始排序");
+          long startTime = System.nanoTime();
+  
+          // 串行流耗时：3820毫秒（单个线程执行）
+  //        list.stream().sorted().findFirst();
+  
+          // 并行流耗时：1324毫秒（多个线程执行）
+          list.parallelStream().sorted().findFirst();
+          long endTime = System.nanoTime();
+  
+          long duration = TimeUnit.NANOSECONDS.toMillis(endTime - startTime);
+          System.out.println("耗时：" + duration + "毫秒");
+      }
+  }
+  
+  ```
+
+  3. 短路运算即：当前运算只要不满足条件，后续的运算将不再执行(与逻辑运算中强于&& ，强或|| 的原理类似)
+
+  ```java
+  package com.dennis.jdk8.stream;
+  
+  import java.util.Arrays;
+  import java.util.List;
+  import java.util.Optional;
+  import java.util.function.Supplier;
+  import java.util.stream.Collectors;
+  import java.util.stream.Stream;
+  
+  /**
+   * 描述：流的短路运算
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/2/3 22:52
+   */
+  public class StreamTest07 {
+      public static void main(String[] args) {
+          // 需求：打印列表中长度为5的第一个字符串
+          Supplier<Stream<String>> supplier = () -> Stream.of("hello world", "hello", "world", "java hi");
+  
+          // 1
+          Optional<String> optional = supplier.get().filter(item -> item.length() == 5).findFirst();
+          optional.ifPresent(item -> {
+              System.out.println(item);
+              System.out.println(item.length());
+          });
+  
+          // 2
+          supplier.get().mapToInt(item -> {
+              int length = item.length();
+              // 问题：此处将会打印哪些字符串？(提示：流的链式调用存在短路运算特性)
+              System.out.println(item);
+              return length;
+          }).filter(length -> length == 5).findFirst().ifPresent(System.out::println);
+          
+          
+          // 需求：单词的拆分与去重
+          Supplier<Stream<String>> supplier1 = () -> Stream.of("hello world", "hello world hello", "hello welcome", "world hello");
+  
+          System.out.println("==============================");
+          // 错误方法
+          List<String[]> collect = supplier1.get().map(item -> item.split(" ")).distinct().collect(Collectors.toList());
+          collect.forEach(item -> Arrays.asList(item).forEach(System.out::println));
+  
+          System.out.println("==============================");
+          // 正确方法
+          Stream<String[]> result = supplier1.get().map(s -> s.split(" "));
+          // Stream<String[]> --> Stream<String>
+          result.flatMap(strArray -> Stream.of(strArray)).distinct().forEach(System.out::println);
+      }
+  }
+  
+  ```
+
+-  **map 与 flatmap的区别:**把Stream中 的每一个元素，映射成另外一个元素。
+
+  1. map生成的是个1:1映射，每个输入元素，都按照规则转换成为另外一个元素。还有一些场景，是一对多映射关系的，这时需要 flatMap。
+
+  2. map和flatMap的方法声明是不一样的
+     <R> Stream<R>      map(Function<? super T, ? extends R> mapper);
+     <R> Stream<R> flatMap(Function<? super T, ? extends Stream<? extends R>> mapper);
+
+  3. ```java
+     // stream1中的每个元素都是一个List集合对象
+     Stream<List<Integer>> stream1 = Stream.of(
+     				 Arrays.asList(1),
+     				 Arrays.asList(2, 3),
+     				 Arrays.asList(4, 5, 6)
+     			 );
+     			Stream<Integer> stream2 = stream1.
+     			flatMap((e) -> e.stream());
+     			
+     stream2.forEach(e->System.out.println(e));//输出1 2 3 4 5 6
+     // flatMap 把 stream1 中的层级结构扁平化，就是将最底层元素抽出来放到一起，最终新的 stream2 里面已经没有 List 了，都是直接的数字。
+     
+     例子:
+     Stream<String> stream1 = Stream.of("tom.Li","lucy.Liu");
+     // flatMap方法把stream1中的每一个字符串都用[.]分割成了俩个字符串
+     // 最后返回了一个包含4个字符串的stream2
+     Stream<String> stream2 = stream1.flatMap(s->Stream.of(s.split("[.]")));
+     stream2.forEach(System.out::println);//输出	tom Li lucy Liu
+     ```
+
+  **例子：**
+
+  ```java
+  package com.dennis.jdk8.stream;
+  
+  import java.util.Arrays;
+  import java.util.List;
+  import java.util.function.Supplier;
+  import java.util.stream.Collectors;
+  import java.util.stream.Stream;
+  
+  /**
+  * 描述：map与flatMap
+  * @author   Dennis
+  * @date     2020/2/4 16:39
+  * @version  1.0
+  */
+  public class StreamTest08 {
+      public static void main(String[] args) {
+          // 需求：单词的拆分并去重
+          Supplier<Stream<String>> supplier = () -> Stream.of("hello world", "hello world hello", "hello welcome", "world hello");
+  
+          // 错误方法
+          List<String[]> collect = supplier.get().map(item -> item.split(" ")).distinct().collect(Collectors.toList());
+          collect.forEach(item -> Arrays.asList(item).forEach(System.out::println));
+  
+          System.out.println("==============================");
+          // 正确方法
+          Stream<String[]> result = supplier.get().map(s -> s.split(" "));
+          // Stream<String[]> --> Stream<String>
+          // 调用flatMap后返回的stream中将不在有数组String[],而直接存储最底层数据string为元素类型
+          result.flatMap(strArray -> Stream.of(strArray)).distinct().forEach(System.out::println);
+      }
+  }
+  ```
+
+- **分组/分区**
+
+  ```java
+  package com.dennis.jdk8.stream;
+  
+  import lombok.AllArgsConstructor;
+  import lombok.Data;
+  
+  import java.util.List;
+  import java.util.Map;
+  import java.util.function.Supplier;
+  import java.util.stream.Collectors;
+  import java.util.stream.Stream;
+  
+  /**
+   * 描述：分组与分区
+   *
+   * @author Dennis
+   * @version 1.0
+   * @date 2020/2/4 17:11
+   */
+  public class StreamTest09 {
+      public static void main(String[] args) {
+          // 对比SQL语句中的分组查询
+          Student s1 = new Student("zhangsan", 100, 20);
+          Student s2 = new Student("lisi", 90, 20);
+          Student s3 = new Student("wangwu", 90, 30);
+          Student s4 = new Student("zhangsan", 80, 40);
+  
+          Supplier<Stream<Student>> supplier = () -> Stream.of(s1, s2, s3, s4);
+          
+          // SELECT * FROM tb_student GROUP BY name
+          // 按照姓名分组
+          Map<String, List<Student>> listMapKeyName = supplier.get().collect(Collectors.groupingBy(Student::getName));
+          System.out.println(listMapKeyName);
+          System.out.println("========================");
+          
+          // SELECT * FROM tb_student GROUP BY score
+          // 按照分数分组
+          Map<Integer, List<Student>> listMapKeyScore = supplier.get().collect(Collectors.groupingBy(Student::getScore));
+          System.out.println(listMapKeyScore);
+          System.out.println("========================");
+  
+  
+          //SELECT name,count(*) FROM tb_student GROUP BY name
+          //按照姓名分组并统计个数：
+          Map<String, Long> countResult = supplier.get().collect(Collectors.groupingBy(Student::getName, Collectors.counting()));
+          System.out.println(countResult);
+  
+          // 分区：只能分两个区，满足指定条件要求的元素一个区，其他所有的元素另一个区
+          Map<Boolean, List<Student>> listMap = supplier.get().collect(Collectors.partitioningBy(student -> student.getScore() > 90));
+          System.out.println(listMap);
+      }
+  
+      @Data
+      @AllArgsConstructor
+      public static class Student {
+          private String name;
+          private Integer score;
+          private Integer age;
+      }
+  }
+  ```
+
+- **cellector接口详解：**该接口知识点多参考Collector JAVA DOC文档
+
+  1. 理解Collector<T,A,R> 中三个泛型参数类型的具体含义
+  2. 掌握四个方法之间的关系
+     -  Supplier<A> supplier();
+     - BiConsumer<A, T> accumulator();
+     - BinaryOperator<A> combiner();
+     - Function<A, R> finisher();
+
+  3. 理解Collector中函数必须满足同一性（identity）和可结合性（associativity）的目的
+
+![image-20200204205135907](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\image-20200204205135907.png)![image-20200204225522197](C:\Users\dennis\AppData\Roaming\Typora\typora-user-images\image-20200204225522197.png)
+
+A中间结果类型  T流中元素类型  R最终返回类型

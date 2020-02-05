@@ -2,12 +2,11 @@ package com.dennis.jdk8.stream;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
- * 描述：并发流与串行流
+ * 描述：并发流parallelStream()与串行流stream()
  *
  * @author Dennis
  * @version 1.0
@@ -24,8 +23,10 @@ public class StreamTest06 {
         // 排序
         System.out.println("开始排序");
         long startTime = System.nanoTime();
+
         // 串行流耗时：3820毫秒（单个线程执行）
 //        list.stream().sorted().findFirst();
+
         // 并行流耗时：1324毫秒（多个线程执行）
         list.parallelStream().sorted().findFirst();
         long endTime = System.nanoTime();

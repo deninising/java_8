@@ -33,18 +33,5 @@ public class StreamTest07 {
             System.out.println(item);
             return length;
         }).filter(length -> length == 5).findFirst().ifPresent(System.out::println);
-        // 需求：单词的拆分与去重
-        Supplier<Stream<String>> supplier1 = () -> Stream.of("hello world", "hello world hello", "hello welcome", "world hello");
-
-        System.out.println("==============================");
-        // 错误方法
-        List<String[]> collect = supplier1.get().map(item -> item.split(" ")).distinct().collect(Collectors.toList());
-        collect.forEach(item -> Arrays.asList(item).forEach(System.out::println));
-
-        System.out.println("==============================");
-        // 正确方法
-        Stream<String[]> result = supplier1.get().map(s -> s.split(" "));
-        // Stream<String[]> --> Stream<String>
-        result.flatMap(strArray -> Stream.of(strArray)).distinct().forEach(System.out::println);
     }
 }
