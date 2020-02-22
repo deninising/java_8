@@ -19,7 +19,7 @@ public class StreamTest04 {
         List<String> strSrcList = Arrays.asList("today ", "is ", "a ", "happy ", "day ");
         Supplier<Stream<String>> streamSupplier1 = () -> Stream.of("today ", "is ", "a ", "happy ", "day ");
         // list->stream->map(element)->todo...
-        strSrcList.stream().map(String::toUpperCase).forEach(System.out::print);
+        strSrcList.parallelStream().map(String::toUpperCase).parallel().forEach(System.out::print);
         streamSupplier1.get().map(String::length).forEach(System.out::print);
         System.out.println();
 
